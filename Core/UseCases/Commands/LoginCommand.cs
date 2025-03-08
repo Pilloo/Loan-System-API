@@ -1,6 +1,6 @@
 using Core.DTOs;
-using Core.Shared;
 using MediatR;
+using Shared.ErrorHandling;
 
 namespace Core.UseCases.Commands;
 

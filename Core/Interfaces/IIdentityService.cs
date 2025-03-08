@@ -1,4 +1,3 @@
-using System.Security.Principal;
 using Core.Domain;
 
 namespace Core.Interfaces;

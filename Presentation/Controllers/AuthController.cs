@@ -1,33 +1,26 @@
-using Core.Domain;
-using Core.Shared;
+using Core.DTOs;
 using Core.UseCases.Commands;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Shared.ErrorHandling;
 
 namespace Presentation.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class AuthController(IMediator mediator, IConfiguration configuration) : ControllerBase
     {
-        private readonly IMediator _mediator;
-
-        public AuthController(IMediator mediator)
-        {
-            _mediator = mediator;
-        }
-
         [HttpPost]
         [Route("login")]
-        [ProducesResponseType<JsonContent>(StatusCodes.Status200OK)]
+        [EndpointDescription("Logs into an account using the provided credentials.")]
+        [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Login([FromBody] LoginCommand loginCommand)
         {
-            var response = await _mediator.Send(loginCommand);
+            var response = await mediator.Send(loginCommand);
 
             if (!response.IsSuccess)
             {
@@ -35,7 +28,6 @@ namespace Presentation.Controllers
                 {
                     ErrorReason.BadRequest => BadRequest(response.Error!.Message),
                     ErrorReason.Unauthorized => Unauthorized(response.Error!.Message),
-                    ErrorReason.NotFound => NotFound(response.Error!.Message),
                     ErrorReason.InternalServerError => StatusCode(500, response.Error!.Message),
                     _ => StatusCode(StatusCodes.Status500InternalServerError, response.Error!.Message)
                 };
@@ -53,7 +45,7 @@ namespace Presentation.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Register([FromBody] RegisterCommand registerCommand)
         {
-            var response = await _mediator.Send(registerCommand);
+            var response = await mediator.Send(registerCommand);
 
             if (!response.IsSuccess)
             {
@@ -66,35 +58,73 @@ namespace Presentation.Controllers
                 };
             }
 
-            if ((response.IsSuccess, response.Value.Errors) is (true, not null))
+            return Ok();
+        }
+
+        [HttpPost]
+        [Route("confirm-email")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+        public async Task<IActionResult> SendEmailVerificationLink(SendEmailConfirmationCommand command)
+        {
+            var response = await mediator.Send(command);
+
+            if (!response.IsSuccess)
             {
-                BadRequest(response.Value.Errors!);
+                return response.Error!.Reason switch
+                {
+                    ErrorReason.BadRequest => BadRequest(response.Error!.Message),
+                    ErrorReason.NotFound => NotFound(response.Error!.Message),
+                    ErrorReason.InternalServerError => StatusCode(500, response.Error!.Message),
+                    ErrorReason.ServiceUnavailable => StatusCode(503, response.Error!.Message),
+                    _ => StatusCode(StatusCodes.Status500InternalServerError, response.Error!.Message)
+                };
             }
-            
-            return Ok(response.Value);
+
+            return Ok();
         }
 
         [HttpGet]
-        [Route("verify-email")]
+        [Route("confirm-email")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ConfirmEmail([FromQuery] VerifyEmailCommand verifyEmailCommand)
+        public async Task<IActionResult> ConfirmEmail([FromQuery] ConfirmEmailCommand confirmEmailCommand)
         {
-            var response = await _mediator.Send(verifyEmailCommand);
+            var response = await mediator.Send(confirmEmailCommand);
 
             if (!response.IsSuccess)
             {
                 return response.Error!.Reason switch
                 {
                     ErrorReason.NotFound => NotFound(response.Error!.Message),
+                    ErrorReason.BadRequest => BadRequest(response.Error!.Message),
                     ErrorReason.InternalServerError => StatusCode(StatusCodes.Status500InternalServerError,
                         response.Error!.Message),
                     _ => StatusCode(StatusCodes.Status500InternalServerError, response.Error!.Message)
                 };
             }
-            
-            return Ok(response.Value);
+
+            return Ok();
+        }
+
+        [HttpGet]
+        [Route("jwt-public-key")]
+        public async Task<IActionResult> GetJwtPubKey()
+        {
+            string filePath = configuration.GetSection("Jwt")["PublicKeyPath"]!;
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound("Public key file not found");
+            }
+
+            string pemContent = await System.IO.File.ReadAllTextAsync(filePath);
+
+            return Content(pemContent);
         }
     }
 }

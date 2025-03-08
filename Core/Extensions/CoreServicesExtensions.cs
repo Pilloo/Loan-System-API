@@ -1,6 +1,4 @@
-using Core.Domain;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Core.UseCases.Commands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Core.Extensions;
@@ -13,8 +11,8 @@ public static class CoreServicesExtensions
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(
             [
-                typeof(UseCases.Commands.LoginCommand).Assembly, typeof(UseCases.Commands.RegisterCommand).Assembly,
-                typeof(UseCases.Commands.VerifyEmailCommand).Assembly
+                typeof(LoginCommand).Assembly, typeof(RegisterCommand).Assembly,
+                typeof(ConfirmEmailCommand).Assembly
             ]
         ));
 

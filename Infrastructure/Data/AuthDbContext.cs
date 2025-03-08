@@ -4,12 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Data;
 
-public class AuthDbContext : IdentityDbContext<User>
+public class AuthDbContext(DbContextOptions<AuthDbContext> options) : IdentityDbContext<User>(options)
 {
-    public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)
-    {
-    }
-
     public override DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

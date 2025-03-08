@@ -1,4 +1,4 @@
-namespace Core.Shared;
+namespace Shared.ErrorHandling;
 
 public enum ErrorReason
 {

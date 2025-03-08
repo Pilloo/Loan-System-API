@@ -1,10 +1,10 @@
-using Core.DTOs;
-using Core.Shared;
 using MediatR;
+using Shared.ErrorHandling;
+using Unit = MediatR.Unit;
 
 namespace Core.UseCases.Commands;
 
-public class RegisterCommand : IRequest<Result<RegisterResponse>>
+public class RegisterCommand : IRequest<Result<Unit>>
 {
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;

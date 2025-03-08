@@ -24,7 +24,6 @@ public static class InfrastructureServicesExtensions
         services.AddTransient<ITemplatedEmailSenderService, TemplatedEmailSender>();
         services.AddTransient<IEmailSenderService, EmailSenderService>();
 
-        
         return services;
     }
 }

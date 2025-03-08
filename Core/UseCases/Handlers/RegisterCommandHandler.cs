@@ -1,45 +1,38 @@
-using System.Net;
-using System.Text;
-using System.Text.Encodings.Web;
 using Core.Domain;
-using Core.DTOs;
-using Core.Interfaces;
-using Core.Shared;
+using Core.Notifications.Notifications;
 using Core.UseCases.Commands;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.WebUtilities;
-using SendGrid;
+using Shared;
+using Shared.ErrorHandling;
+using Unit = MediatR.Unit;
 
 namespace Core.UseCases.Handlers;
 
-public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
+public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Unit>>
 {
     private readonly UserManager<User> _userManager;
     private readonly IUserStore<User> _userStore;
     private readonly IUserEmailStore<User> _emailStore;
-    private readonly ITemplatedEmailSenderService _templatedEmailSenderService;
-    private readonly IEmailSenderService _emailSenderService;
+    private readonly IMediator _mediator;
 
-    public RegisterCommandHandler(UserManager<User> userManager, IUserStore<User> userStore,
-        ITemplatedEmailSenderService templatedEmailSenderService, IEmailSenderService emailSenderService)
+    public RegisterCommandHandler(UserManager<User> userManager, IUserStore<User> userStore, IMediator mediator)
     {
         _userManager = userManager;
         _userStore = userStore;
         _emailStore = (IUserEmailStore<User>)userStore;
-        _templatedEmailSenderService = templatedEmailSenderService;
-        _emailSenderService = emailSenderService;
+        _mediator = mediator;
     }
 
-    public async Task<Result<RegisterResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<Result<Unit>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
-        if (EmptyMembersChecker.HasEmptyMembers(request))
-            return Result<RegisterResponse>.Failure(new EmptyFields());
+        if (FieldsValidator.ValidateFields(request))
+            return Result<Unit>.Failure(new EmptyFields());
 
         if ((await _userManager.FindByEmailAsync(request.Email), await _userManager.FindByNameAsync(
                 request.Username)) is (not null, not null))
         {
-            return Result<RegisterResponse>.Failure(new EmailOrUsernameAlreadyUsed());
+            return Result<Unit>.Failure(new EmailOrUsernameAlreadyUsed());
         }
 
         User user = new User()
@@ -54,26 +47,11 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
 
         if (!result.Succeeded)
         {
-            return Result<RegisterResponse>.Failure(new PassswordDoesNotMeetSecurityCriteria());
+            return Result<Unit>.Failure(new PasswordDoesNotMeetSecurityCriteria());
         }
 
-        string confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-        string encodedConfirmationToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmationToken));
-        var confirmationLink = $"/api/auth/verify-email?email={user.Email}&token={encodedConfirmationToken}";
-        Response emailResponse =
-            await _templatedEmailSenderService.SendEmailConfirmationAsync(user.Email!, confirmationLink);
-
-        if (!emailResponse.IsSuccessStatusCode)
-        {
-            return emailResponse.StatusCode switch
-            {
-                HttpStatusCode.ServiceUnavailable => Result<RegisterResponse>.Failure(new ExternalServiceUnavailable()),
-                HttpStatusCode.Unauthorized => Result<RegisterResponse>.Failure(new InternalServerError()),
-                _ => Result<RegisterResponse>.Failure(new InternalServerError())
-            };
-        }
-
-        return Result<RegisterResponse>.Success(new RegisterResponse()
-            { RedirectTo = "/confirmationsend" });
+        await _mediator.Publish(new SendEmailVerificationEvent(request.Email), cancellationToken);
+        
+        return Result<Unit>.Success(Unit.Value);
     }
 }

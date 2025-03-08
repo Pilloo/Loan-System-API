@@ -28,7 +28,6 @@ public class IdentityService : IIdentityService
         var credentials = new SigningCredentials(new RsaSecurityKey(securityKey), SecurityAlgorithms.RsaSha256);
 
         var token = new JwtSecurityToken(
-            
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Audience"],
             claims: [new Claim(JwtRegisteredClaimNames.Sub, user.UserName!)],
@@ -72,8 +71,8 @@ public class IdentityService : IIdentityService
 
         var tokenHandler = new JwtSecurityTokenHandler();
         ClaimsPrincipal principal = tokenHandler.ValidateToken(token, validationParameters, out var securityToken);
-        var jwtSecurityToken = securityToken as JwtSecurityToken;
-        if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.RsaSha256,
+        if (securityToken is not JwtSecurityToken jwtSecurityToken || !jwtSecurityToken.Header.Alg.Equals(
+                SecurityAlgorithms.RsaSha256,
                 StringComparison.InvariantCultureIgnoreCase)) throw new SecurityTokenException("Invalid token");
         return Task.FromResult(principal);
     }

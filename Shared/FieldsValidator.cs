@@ -1,10 +1,10 @@
 using System.Reflection;
 
-namespace Core.Shared;
+namespace Shared;
 
-public class EmptyMembersChecker
+public class FieldsValidator
 {
-    public static bool HasEmptyMembers(object obj)
+    public static bool ValidateFields(object obj)
     {
         PropertyInfo[] properties = obj.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
 

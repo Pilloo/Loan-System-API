@@ -1,6 +1,4 @@
-using Core.DTOs;
-
-namespace Core.Shared;
+namespace Shared.ErrorHandling;
 
 public class Result<T>
 {

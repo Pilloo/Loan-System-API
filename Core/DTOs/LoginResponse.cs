@@ -4,11 +4,11 @@ namespace Core.DTOs;
 /// Represents the result of the <see cref="Core.UseCases.Handlers.LoginCommandHandler">Login</see>
 /// command execution.
 /// </summary>
-public class LoginResponse : DefaultResponse
+public class LoginResponse
 {
     /// <value>The JWT token generated.</value>
-    public required string Token { get; set; }
+    public string Token { get; set; } = string.Empty;
 
     /// <value>The refresh token used to generate a new JWT token.</value>
-    public required string RefreshToken { get; set; }
+    public string RefreshToken { get; set; } = String.Empty;
 }
